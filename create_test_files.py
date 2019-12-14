@@ -38,6 +38,7 @@ if __name__ == "__main__":
     #reconstructed_filenames = [f for f in listdir(reconstructed_data_dir) if isfile(join(reconstructed_data_dir, f))]
 
     for f in original_filenames:
+        print("Source: {}".format(f))
         img_path = join(original_data_dir, f)
 
         # Save uncompressed original
@@ -55,6 +56,7 @@ if __name__ == "__main__":
 
 
     for f in original_filenames:
+        print("Reconstructed: {}".format(f))
 
         # Save reconstructed from PNG
         img_path = join(join(reconstructed_data_dir, "PNG"), f)

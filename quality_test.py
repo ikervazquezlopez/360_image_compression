@@ -114,14 +114,13 @@ if __name__ == "__main__":
 
 	for f in filenames:
 		print("+++++++++++ {} +++++++++".format(f))
+		
 		# Original PNG vs Reconstructed from PNG
 		print("== Original PNG vs Reconstructed from PNG ==")
 		original_img_png = cv2.imread(join(source_filename_dir, f))
 		h, w, _ = original_img_png.shape
 		original_img_png = original_img_png[:h, :w-2]
-		print(original_img_png.shape)
 		rec_image_png = cv2.imread(join(join(test_dir, reconstucted_uncompressed_dir), f))
-		print(rec_image_png.shape)
 		print(compute_ssim(original_img_png, rec_image_png))
 		del rec_image_png
 
@@ -142,7 +141,6 @@ if __name__ == "__main__":
 		original_img_jpeg = original_img_jpeg[:h, :w-2]
 		#rec_image_jpeg = cv2.imread(join(join(test_dir, reconstucted_JPEG_dir), f))
 		print(compute_ssim(original_img_jpeg, rec_image_jpeg))
-		print("")
 		del rec_image_jpeg
 
 		# Original JPEG vs Reconstructed from PNG
@@ -153,4 +151,14 @@ if __name__ == "__main__":
 		#original_img_jpeg = original_img_jpeg[:h, :w-2]
 		rec_image_png = cv2.imread(join(join(test_dir, reconstucted_uncompressed_dir), f))
 		print(compute_ssim(original_img_jpeg, rec_image_png))
-		del original_img_jpeg, rec_image_png
+		del rec_image_png
+
+		# Original PNG vs Original JPEG
+		print("== Original PNG vs Original JPEG ==")
+		original_img_png = cv2.imread(join(source_filename_dir, f))
+		jpeg_name = f.split('.')[0] + ".jpeg"
+		original_img_jpeg = cv2.imread(join(join(test_dir, original_JPEG_dir), jpeg_name))
+		print(compute_ssim(original_img_png, original_img_jpeg))
+		del original_img_png, original_img_jpeg
+
+		print("")

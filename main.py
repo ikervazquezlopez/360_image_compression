@@ -17,7 +17,7 @@ result_dir_jpeg = join(result_dir_name, "JPEG")
 
 if __name__ == "__main__":
     directory = sys.argv[1]
-    filenames = [f for f in listdir(directory) if isfile(join(directory, f))]
+    filenames = [f for f in listdir(directory) if isfile(join(directory, f) and ".tif" in f)]
 
     if not isdir(result_dir_name):
         os.mkdir(result_dir_name)
