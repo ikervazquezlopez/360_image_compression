@@ -19,6 +19,8 @@ def split(img):
     right = img[:, center:]
     return (left, right)
 
+
+
 def downsample(img):
     return
 
