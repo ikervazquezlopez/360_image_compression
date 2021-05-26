@@ -69,6 +69,24 @@ def rhomboid_downsample(img):
             I_r[j,i] = cv2.getRectSubPix(img, (1,1), (idxi,j))
     return I_r
 
+
+"""
+Reconstruct the equirectangular projected image from the downsampled rhomboid image.
+
+In:
+    img_r: downsampled rhomboid image.
+Out:
+    img: reconstructed equirectangular image.
+"""
+def rhomboid_reconstruction(img_r):
+    h, w = img_r.shape
+    I_erp = np.zeros_like(img_r)
+    for i in range(w):
+        for j in range(h):
+            idxi = (i*_L(j,h)) / (2*h) - _L(j,h)/2 + h
+            I_erp[j,i] = cv2.getRectSubPix(img_r, (1,1), (idxi,j))
+    return I_erp
+
 """
 =======================================================================================================================
 """
