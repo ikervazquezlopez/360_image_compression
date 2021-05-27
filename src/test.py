@@ -1,6 +1,6 @@
 import cv2
 import numpy
-import EquirectangularDownsampling as ed
+import equirectangular_downsampling as ed
 import rhomboid_downsampling as rd
 
 
@@ -35,7 +35,29 @@ cv2.destroyAllWindows()
 ================================================================================
 Test Lee Downsampling
 """
+
+"""
 I_r = rd.rhomboid_downsample(pano)
+I_erp = rd.rhomboid_reconstruction(I_r)
+cv2.imshow("Rhomboid downsample", I_erp)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+"""
+
+"""
+================================================================================
+"""
+
+
+
+
+"""
+================================================================================
+Test Rhomboid Downsampling (1,1)
+"""
+left, right = ed.split(pano)
+I_r = rd.rhomboid_downsample_1_1(left)
+I_erp = rd.rhomboid_reconstruction_1_1(I_r)
 cv2.imshow("Rhomboid downsample", I_r)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
