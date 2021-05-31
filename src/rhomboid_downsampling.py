@@ -87,6 +87,71 @@ def rhomboid_reconstruction(img_r):
             I_erp[j,i] = cv2.getRectSubPix(img_r, (1,1), (idxi,j))
     return I_erp
 
+
+
+
+"""
+Rearrange the triangle in the top right quadrant as stated in the paper but with
+a slight modification for the index computation.
+
+In:
+    img: the downsampled rhomboid image.
+    canvas: the image where the rearrangement is stored.
+Out:
+    canvas: the image where the rearrangement is stored.
+"""
+def rearrange_top_right_quadrant(img, canvas):
+    h, w, _ = img.shape
+
+    for j in range(h//2+1):
+        for i in range(h, h+2*j):
+            ip=i
+            jp = j
+            if i > h-1+j:
+                ip = h-1+j
+                jp = j-(i-ip)#j-i-ip
+                #print(j, i, jp, ip)
+            canvas[jp, ip-h//2] = img[j, i]
+    return canvas
+
+
+
+
+"""
+Rearranges the full downsampled rhomboid shape as stated in the paper. It generates
+a canvas and uses the top right rearrangement function to store the rearranged image.
+Since the rearrange_top_right_quadrant() only rearranges the top right quadrant,
+this method flips the img_rh and canvas accordingly to generate the correct rearrangement.
+
+In:
+    img_rh: the downsampled rhomboid image.
+Out:
+    canvas: the rearranged downsampled rhomboid image of size (h,h)
+"""
+def rhomboid_rearrangement(img_rh):
+    h, w, _ = img_rh.shape
+
+    canvas = np.zeros((h, h, 3), np.uint8)
+
+    img = img_rh
+    canvas = rearrange_top_right_quadrant(img, canvas)
+
+    img = cv2.flip(img,0)
+    canvas = cv2.flip(canvas,0)
+    canvas = rearrange_top_right_quadrant(img, canvas)
+
+    img = cv2.flip(img,1)
+    canvas = cv2.flip(canvas,1)
+    canvas = rearrange_top_right_quadrant(img, canvas)
+
+    img = cv2.flip(img,0)
+    canvas = cv2.flip(canvas,0)
+    canvas = rearrange_top_right_quadrant(img, canvas)
+
+    canvas = cv2.flip(canvas,1)
+    return canvas
+
+
 """
 =======================================================================================================================
 """

@@ -8,8 +8,8 @@ This code takes the insights from the paper "*An Analysis on Pixel Redundancy St
 - [X] Vertically split the image at latitude 0
 - [X] Downsample both parts independently and generate two romboids (one per part)
 - [ ] Rearrange the romboid pixels:
-  - [ ] (1) Make them into triangles and fit them in the shame hemisphere
-  - [ ] (2) Use the same approach as in [2]
+  - [] (1) Make them into triangles and fit them in the shame hemisphere
+  - [X] (2) Use the same approach as in [2]
 - [ ] Compute the quality metrics and compare against [2] results.
 
 
