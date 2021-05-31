@@ -13,7 +13,7 @@ Out:
     (img0, img1): A tuple of two images, the left and right halves of *img*
 """
 def split(img):
-    h, w = img.shape
+    h, w, _ = img.shape
     center = w // 2
     left = img[:, 0:center]
     right = img[:, center:]
