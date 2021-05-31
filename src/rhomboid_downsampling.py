@@ -61,7 +61,7 @@ Out:
     img_r: a downsampled version of *img* converted into a rhomboid.
 """
 def rhomboid_downsample(img):
-    h, w = img.shape
+    h, w, _ = img.shape
     I_r = np.zeros_like(img)
     for i in range(w):
         for j in range(h):
@@ -79,7 +79,7 @@ Out:
     img: reconstructed equirectangular image.
 """
 def rhomboid_reconstruction(img_r):
-    h, w = img_r.shape
+    h, w, _ = img_r.shape
     I_erp = np.zeros_like(img_r)
     for i in range(w):
         for j in range(h):
@@ -145,7 +145,7 @@ Out:
     img_r: a downsampled version of *img* converted into a rhomboid.
 """
 def rhomboid_downsample_1_1(img):
-    h, w = img.shape
+    h, w, _ = img.shape
     I_r = np.zeros_like(img)
     for i in range(w):
         for j in range(h):
@@ -164,7 +164,7 @@ Out:
     img: reconstructed half equirectangular image.
 """
 def rhomboid_reconstruction_1_1(img_r):
-    h, w = img_r.shape
+    h, w, _ = img_r.shape
     I_erp = np.zeros_like(img_r)
     for i in range(w):
         for j in range(h):
