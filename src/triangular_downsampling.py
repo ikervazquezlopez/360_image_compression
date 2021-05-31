@@ -172,7 +172,7 @@ def triangular_reconstruction_1_1(img):
         canvas[h, c] = img[0, c+2]
 
     # Reconstruct northern hemisphere
-    for r in range(h-1, 0, -1):
+    for r in range(h-1, -1, -1):
         chunks = 1 + r * SAMPLING_INCREMENT_1_1
         chunk_size = w / chunks
         for c in range(0, chunks):
@@ -180,6 +180,8 @@ def triangular_reconstruction_1_1(img):
             c_end = c_start + int(chunk_size)
             canvas[r, c_start] = img[r, c]
             for p in range(c_start+1, c_end+1):
+                if p >= w:
+                    continue
                 canvas[r, p] = row_linear_interpolation(p, r, c, c_start, int(chunk_size), img)
 
     # Flip horizontally and vertically
@@ -187,7 +189,7 @@ def triangular_reconstruction_1_1(img):
     canvas = cv2.flip(canvas, -1)
 
     # Reconstruct the southern hemisphere
-    for r in range(h-1, 0, -1):
+    for r in range(h-1, -1, -1):
         chunks = 1 + r * SAMPLING_INCREMENT_1_1
         chunk_size = w / chunks
         for c in range(0, chunks):
@@ -195,6 +197,8 @@ def triangular_reconstruction_1_1(img):
             c_end = c_start + int(chunk_size)
             canvas[r, c_start] = img[r, c]
             for p in range(c_start+1, c_end+1):
+                if p >= w:
+                    continue
                 canvas[r, p] = row_linear_interpolation(p, r, c, c_start, int(chunk_size), img)
 
     # Flip canvas back

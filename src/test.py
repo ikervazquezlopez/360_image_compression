@@ -82,14 +82,13 @@ cv2.destroyAllWindows()
 Test Triangular Downsampling (2,1)
 """
 
-
+"""
 I_t = td.triangular_downsampling_2_1(pano)
 I_erp = td.triangular_reconstruction_2_1(I_t)
 cv2.imshow("Triangular reconstruction", I_erp)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-
-cv2.imwrite("out.png", I_erp)
+"""
 
 
 """
@@ -105,16 +104,15 @@ cv2.imwrite("out.png", I_erp)
 Test Triangular Downsampling (1,1)
 """
 
-"""
+
 left, right = ed.split(pano)
 I_t = td.triangular_downsampling_1_1(left)
-#I_erp = rd.rhomboid_reconstruction_1_1(I_r)
-#I_erp = cv2.flip(I_erp, 1)
-cv2.imshow("Triangular downsample", I_t)
+I_erp = td.triangular_reconstruction_1_1(I_t)
+cv2.imshow("Triangular downsample", I_erp)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
-cv2.imwrite("left.png", I_t)
-"""
+cv2.imwrite("left.png", I_erp)
+
 
 """
 ================================================================================
