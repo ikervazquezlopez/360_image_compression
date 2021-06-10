@@ -1,8 +1,10 @@
 import cv2
-import numpy
+import numpy as np
+
 import equirectangular_downsampling as ed
 import rhomboid_downsampling as rd
 import triangular_downsampling as td
+import sinusoidal_downsampling as sd
 
 
 pano = cv2.imread("../data/pano1056.png")
@@ -38,7 +40,7 @@ cv2.destroyAllWindows()
 Test Lee Downsampling
 """
 
-
+"""
 I_r = rd.rhomboid_downsample(pano)
 I_erp = rd.rhomboid_reconstruction(I_r)
 I_c = rd.rhomboid_rearrangement(I_r)
@@ -46,7 +48,7 @@ cv2.imshow("Rhomboid rearrangement", I_c)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 cv2.imwrite("out.png", I_c)
-
+"""
 
 
 """
@@ -61,14 +63,30 @@ cv2.imwrite("out.png", I_c)
 Test Rhomboid Downsampling (1,1)
 """
 
-"""
+
 left, right = ed.split(pano)
 I_r = rd.rhomboid_downsample_1_1(left)
+
+"""
+tmp = np.zeros_like(left)
+tmp = rd.rhomboid_sort_northen_hemisphere_1_1(I_r,tmp)
+I_r = cv2.flip(I_r, 0)
+tmp = cv2.flip(tmp, 0)
+I_s = rd.rhomboid_sort_northen_hemisphere_1_1(I_r,tmp)
+I_s = cv2.flip(I_s, 0)
+I_r = cv2.flip(I_r, 0)
+"""
+"""
+I_c = rd.rhomboid_rearrangement_1_1(I_r)
+
+
 I_erp = rd.rhomboid_reconstruction_1_1(I_r)
 I_erp = cv2.flip(I_erp, 1)
-cv2.imshow("Rhomboid downsample", I_erp)
+cv2.imshow("Rhomboid rearrangement", I_c)
+cv2.imshow("left", I_r)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+cv2.imwrite("out.png", I_c)
 """
 
 """
@@ -114,6 +132,25 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 cv2.imwrite("left.png", I_erp)
 """
+
+
+"""
+================================================================================
+"""
+
+
+
+"""
+================================================================================
+Test Sinusoidal Downsampling (2,1)
+"""
+
+
+I_s = sd.sinusoidal_downsampling(pano)
+cv2.imshow("Sinusoidal downsample", I_s)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 
 
 """
