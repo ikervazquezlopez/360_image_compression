@@ -145,13 +145,45 @@ cv2.imwrite("left.png", I_erp)
 Test Sinusoidal Downsampling (2,1)
 """
 
-
+"""
 I_s = sd.sinusoidal_downsampling(pano)
 #I_r = sd.sinusoidal_reconstruction(I_s)
+print(pano.shape)
+print(I_s.shape)
 cv2.imshow("Pano", pano)
 cv2.imshow("Sinusoidal downsample", I_s)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+"""
+
+
+"""
+================================================================================
+"""
+
+
+
+
+
+
+
+
+"""
+================================================================================
+Test Sinusoidal Rearrange (2,1)
+"""
+
+
+I_s = sd.sinusoidal_downsampling(pano)
+I_r = sd.sinusoidal_rearrange_forward(I_s)
+cv2.imshow("Sinusoidal downsampling", I_s)
+cv2.imshow("Sinusoidal rearrange forward", I_r)
+#I_r = sd.sinusoidal_rearrange_backward(I_r)
+#cv2.imshow("Pano", pano)
+#cv2.imshow("Sinusoidal rearrange backward", I_r)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+cv2.imwrite("out.png", I_r)
 
 
 

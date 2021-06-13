@@ -51,6 +51,13 @@ def equirectangular2latlng(x, y,  img_w, img_h, lat0=0, lng0=0):
     return (lat, lng)
 
 
+def rearrange_cartesian2latlng(x, y, img_w, img_h):
+    row_length = img_w * math.cos( (PI/2) * ( 1-(y/(img_h/2)) ) )
+    lng = 2*PI * ( (x-img_w//2 + row_length/2) / row_length ) - PI
+    lat  = PI * y/(img_h//2) - PI/2
+    return (lat, lng)
+
+
 
 """
 Converts the latitude and logitude to sinusoidal coordinates.
@@ -142,4 +149,62 @@ def sinusoidal_reconstruction(sin_img):
             lat, lng = equirectangular2latlng(x, y, img_w, img_h)
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
             img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,ys))
+    return img
+
+
+
+
+
+
+
+
+
+
+
+"""
+Rearrange pixels in the sinusoidal projected image. The northern hemisphere floats to
+the left while the southern hemisphere float to the right.
+
+In:
+    sin_img: the sinusoidal projected image.
+Out:
+    img_r: rearranged pixels from sin_img.
+"""
+def sinusoidal_rearrange_forward(sin_img):
+    img = np.zeros_like(sin_img)
+    img_h, img_w, _ = img.shape
+    for x in range(0,img_w):
+        for y in range(0,img_h):
+            d = abs((img_w/2) * math.cos(math.pi*(y/(img_h) - 0.5)))
+
+            if x+(img_w-2*int(d)) >= img_w:
+                continue
+            lat, lng = equirectangular2latlng(x, y, 2*d, img_h)
+            xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
+
+            if y < img_h//2:
+                img[y-1, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))#sin_img[y,int(xs)]
+            elif y == img_h//2:
+                img[y-1, x] = sin_img[y,x]
+            else:
+                img[y-1, x+(img_w-2*int(d))-2] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))
+    return img
+
+
+
+def sinusoidal_rearrange_backward(r_img):
+    img = np.zeros_like(r_img)
+    img_h, img_w, _ = img.shape
+    for x in range(0,img_w):
+        for y in range(0,img_h):
+            d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
+
+            if x+(img_w//2-int(d))-1 < 0 or x+(img_w//2-int(d))-1 >= img_w: # Limit the sinusoidal shape
+                continue
+            lat, lng = equirectangular2latlng(x, y, img_w, img_h)
+            xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
+            if y < img_h//2:
+                img[y, x+(img_w//2-int(d))-1] = r_img[y, x]
+            else:
+                img[y, (img_w//2-int(d))-x] = r_img[y, img_w-x-1]
     return img
