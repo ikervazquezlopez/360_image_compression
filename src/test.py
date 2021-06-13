@@ -63,11 +63,11 @@ cv2.imwrite("out.png", I_c)
 Test Rhomboid Downsampling (1,1)
 """
 
-
+"""
 left, right = ed.split(pano)
 I_r = rd.rhomboid_downsample_1_1(left)
 
-"""
+
 tmp = np.zeros_like(left)
 tmp = rd.rhomboid_sort_northen_hemisphere_1_1(I_r,tmp)
 I_r = cv2.flip(I_r, 0)
@@ -147,6 +147,8 @@ Test Sinusoidal Downsampling (2,1)
 
 
 I_s = sd.sinusoidal_downsampling(pano)
+#I_r = sd.sinusoidal_reconstruction(I_s)
+cv2.imshow("Pano", pano)
 cv2.imshow("Sinusoidal downsample", I_s)
 cv2.waitKey(0)
 cv2.destroyAllWindows()

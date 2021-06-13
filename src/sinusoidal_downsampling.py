@@ -23,10 +23,32 @@ Out:
 def sinusoidal2latlng(x, y, lng0, img_w, img_h):
     w = img_w
     h = img_h
-    xx = 2*math.pi*x/w - math.pi
+    xx = 2*math.pi*(x/w) - math.pi
     lat = math.pi*y/h - math.pi/2
-    lng = xx * math.cos(lat) + lng0
+    lng = xx / math.cos(lat) + lng0
     return (lat, lng)
+
+
+
+def equirectangular2latlng(x, y,  img_w, img_h, lat0=0, lng0=0):
+    w = img_w
+    h = img_h
+    xx = 2*math.pi*x/w - math.pi
+    yy = math.pi*y/h - math.pi/2
+    lng = xx/math.cos(lat0) + lng0
+    lat = yy + lat0
+    return (lat, lng)
+
+
+
+def latlng2sinusoidal(lat,lng, img_w, img_h, lng0=0):
+    w = img_w
+    h = img_h
+    xx = (lng-lng0)*math.cos(lat)
+    yy = lat
+    x = w * (xx+math.pi) / (2*math.pi)
+    y = h * (yy+math.pi/2) / math.pi
+    return (x, y)
 
 
 
@@ -83,8 +105,18 @@ def sinusoidal_downsampling(equi_img):
                 continue
             lat, lng = sinusoidal2latlng(x, y, lng0, img_w, img_h)
             xs, ys = latlng2equirectangular(lat, lng, img_w, img_h)
-            if xs-math.floor(xs)==0 and ys-math.floor(ys)==0:
-                img[y,x] = equi_img[int(ys), int(xs)]
-            else:
-                img[y, x] = cv2.getRectSubPix(equi_img, (1,1), (xs,ys))
+            img[y, x] = cv2.getRectSubPix(equi_img, (1,1), (xs,ys))
+    return img
+
+
+def sinusoidal_reconstruction(sin_img):
+    img = np.zeros_like(sin_img)
+    img_h, img_w, _ = img.shape
+    lng0 = 0
+
+    for x in range(0,img_w):
+        for y in range(0,img_h):
+            lat, lng = equirectangular2latlng(x, y, img_w, img_h)
+            xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
+            img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,ys))
     return img
