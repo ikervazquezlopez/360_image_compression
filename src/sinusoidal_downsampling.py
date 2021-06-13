@@ -29,7 +29,18 @@ def sinusoidal2latlng(x, y, lng0, img_w, img_h):
     return (lat, lng)
 
 
+"""
+Converts the equirectanuglar coordinates to longitude and latitude.
 
+In:
+    x: equirectangular image horizontal coordinate.
+    y: equirectangular image vertical coodinate
+    img_w: equirectangular projection image width.
+    img_h: equirectangular projection image heigth.
+    lng0: the meridian of the projection in radians.
+Out:
+    lat, lng: latitude and longitude coordinates
+"""
 def equirectangular2latlng(x, y,  img_w, img_h, lat0=0, lng0=0):
     w = img_w
     h = img_h
@@ -41,6 +52,18 @@ def equirectangular2latlng(x, y,  img_w, img_h, lat0=0, lng0=0):
 
 
 
+"""
+Converts the latitude and logitude to sinusoidal coordinates.
+
+In:
+    lat: latitude in range [-PI/2, PI/2].
+    longitude: longitude in range [-PI, PI].
+    img_w: equirectangular projection image width.
+    img_h: equirectangular projection image heigth.
+    lng0: the meridian of the projection in radians.
+Out:
+    x, y: horizontal and vertical coordinates in the sinusoidal projection.
+"""
 def latlng2sinusoidal(lat,lng, img_w, img_h, lng0=0):
     w = img_w
     h = img_h
