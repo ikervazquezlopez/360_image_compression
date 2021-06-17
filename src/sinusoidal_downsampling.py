@@ -5,7 +5,7 @@ import cv2
 
 PI = math.pi
 
-
+RED = np.array([0,0,255])
 
 
 """
@@ -162,8 +162,7 @@ def sinusoidal_reconstruction(sin_img):
 
 
 """
-Rearrange pixels in the sinusoidal projected image. The northern hemisphere floats to
-the left while the southern hemisphere float to the right.
+Rearrange pixels in the sinusoidal projected image.
 
 In:
     sin_img: the sinusoidal projected image.
@@ -173,22 +172,35 @@ Out:
 def sinusoidal_rearrange_forward(sin_img):
     img = np.zeros_like(sin_img)
     img_h, img_w, _ = img.shape
+
+    # Horizontal rearrangement
     for x in range(0,img_w):
         for y in range(0,img_h):
             d = abs((img_w/2) * math.cos(math.pi*(y/(img_h) - 0.5)))
 
-            if x+(img_w-2*int(d)) >= img_w:
+            if x+(img_w-2*int(d)) > img_w:
                 continue
+
             lat, lng = equirectangular2latlng(x, y, 2*d, img_h)
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
 
             if y < img_h//2:
-                img[y-1, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))#sin_img[y,int(xs)]
+                img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))
             elif y == img_h//2:
-                img[y-1, x] = sin_img[y,x]
+                img[y, x] = sin_img[y,x]
             else:
-                img[y-1, x+(img_w-2*int(d))-2] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))
-    return img
+                img[y, x+(img_w-2*int(d))-2] =  cv2.getRectSubPix(sin_img, (1,1), (xs,y))
+
+
+    # Vertical rearrangement
+    pix_count = int(img_h*math.acos(0.5)/PI)
+    img_r = np.zeros_like(img)
+    for x in range(0,img_w):
+        for y in range(0,img_h):
+            v_shift = int(img_h*math.acos(x/img_w)/PI - img_h//2)
+            img_r[y+v_shift-1,x] = cv2.getRectSubPix(img, (1,1), (x,y))#img[y,x]
+
+    return img_r[:2*pix_count+2,:,:]
 
 
 
@@ -201,9 +213,10 @@ def sinusoidal_rearrange_backward(r_img):
 
             if x+(img_w//2-int(d))-1 < 0 or x+(img_w//2-int(d))-1 >= img_w: # Limit the sinusoidal shape
                 continue
+
             lat, lng = equirectangular2latlng(x, y, img_w, img_h)
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
-            if y < img_h//2:
+            if y < img_h//2 :
                 img[y, x+(img_w//2-int(d))-1] = r_img[y, x]
             else:
                 img[y, (img_w//2-int(d))-x] = r_img[y, img_w-x-1]
