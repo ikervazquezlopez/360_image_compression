@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import cv2
+from tqdm import tqdm
 
 
 PI = math.pi
@@ -20,12 +21,15 @@ In:
 Out:
     lat, lng: latitude and longitude coordinates
 """
-def sinusoidal2latlng(x, y, lng0, img_w, img_h):
+def sinusoidal2latlng(x, y, img_w, img_h, lng0=0):
     w = img_w
     h = img_h
     xx = 2*math.pi*(x/w) - math.pi
     lat = math.pi*y/h - math.pi/2
-    lng = xx / math.cos(lat) + lng0
+    if y == 0:
+        lng = 0
+    else:
+        lng = xx / math.cos(lat) + lng0
     return (lat, lng)
 
 
@@ -125,7 +129,6 @@ def sinusoidal_downsampling(equi_img):
     img = np.zeros_like(equi_img)
     img_h, img_w, _ = img.shape
     lng0 = 0
-
     for x in range(0,img_w):
         for y in range(0,img_h):
             d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
@@ -133,7 +136,7 @@ def sinusoidal_downsampling(equi_img):
             thresh_high = int(img_w/2+d)
             if x < thresh_low or x > thresh_high: # Limit the sinusoidal shape
                 continue
-            lat, lng = sinusoidal2latlng(x, y, lng0, img_w, img_h)
+            lat, lng = sinusoidal2latlng(x, y, img_w, img_h, lng0=lng0)
             xs, ys = latlng2equirectangular(lat, lng, img_w, img_h)
             img[y, x] = cv2.getRectSubPix(equi_img, (1,1), (xs,ys))
     return img
@@ -178,46 +181,109 @@ def sinusoidal_rearrange_forward(sin_img):
         for y in range(0,img_h):
             d = abs((img_w/2) * math.cos(math.pi*(y/(img_h) - 0.5)))
 
-            if x+(img_w-2*int(d)) > img_w:
-                continue
-
             lat, lng = equirectangular2latlng(x, y, 2*d, img_h)
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
 
+
             if y < img_h//2:
-                img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,y))
-            elif y == img_h//2:
+                img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (x+(img_w//2-d),y))
+            elif y == img_h//2 or y == img_h//2+1:
                 img[y, x] = sin_img[y,x]
             else:
-                img[y, x+(img_w-2*int(d))-2] =  cv2.getRectSubPix(sin_img, (1,1), (xs,y))
+                img[y,x] =  cv2.getRectSubPix(sin_img, (1,1), (x-(img_w//2-d),y))
 
 
     # Vertical rearrangement
     pix_count = int(img_h*math.acos(0.5)/PI)
     img_r = np.zeros_like(img)
     for x in range(0,img_w):
+        v_shift = abs(img_h*math.acos(x/img_w)/PI - img_h//2)
         for y in range(0,img_h):
-            v_shift = int(img_h*math.acos(x/img_w)/PI - img_h//2)
-            img_r[y+v_shift-1,x] = cv2.getRectSubPix(img, (1,1), (x,y))#img[y,x]
-
+            if y+v_shift+1 > 2*pix_count+2:
+                continue
+            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))#img[y,x]
     return img_r[:2*pix_count+2,:,:]
 
 
 
-def sinusoidal_rearrange_backward(r_img):
-    img = np.zeros_like(r_img)
+def sinusoidal_compression(equi_img):
+    img = np.zeros_like(equi_img)
     img_h, img_w, _ = img.shape
+
+    lng0 = 0
+    pix_count = int(img_h*math.acos(0.5)/PI)
+    # Sinusoidal projection and horizontal shift
     for x in range(0,img_w):
         for y in range(0,img_h):
             d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
+            if y <= img_h/2: # North hemisphere horizontal shift
+                x_sin = x + (img_w/2 - d) # X coord in sinusoidal space
+            else: # South hemisphere horizontal shift
+                x_sin = x - (img_w/2 - d) # X coord in sinusoidal space
 
-            if x+(img_w//2-int(d))-1 < 0 or x+(img_w//2-int(d))-1 >= img_w: # Limit the sinusoidal shape
+            lat, lng = sinusoidal2latlng(x_sin, y, img_w, img_h)
+            x_equi, y_equi = latlng2equirectangular(lat, lng, img_w, img_h)
+
+            img[y, x] = cv2.getRectSubPix(equi_img, (1,1), (x_equi, y_equi))
+
+    # Vertical rearrangement
+    pix_count = int(img_h*math.acos(0.5)/PI)
+    img_r = np.zeros_like(img)
+    for x in range(0,img_w):
+        v_shift = abs(img_h*math.acos(x/img_w)/PI - img_h//2)
+        for y in range(0,img_h):
+            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))#img[y,x]
+
+    return img_r[:2*pix_count+2,:,:]
+
+
+def sinusoidal_decompression(img_r):
+    h, w, _ = img_r.shape
+    img = np.zeros((w//2, w, 3), dtype=np.uint8)
+    img_h, img_w, _ = img.shape
+
+    # Vertical rearrangement
+    pix_count = int(img_h*math.acos(0.5)/PI)
+    for x in range(0,img_w):
+        v_shift = img_h*math.acos(x/img_w)/PI - img_h//2
+        for y in range(0,img_h):
+            img[y,x] = cv2.getRectSubPix(img_r, (1,1), (x,y+v_shift+1))#img[y,x]
+
+    # Horizontal rearrangement
+    out = np.zeros_like(img)
+    for x in range(0,img_w):
+        for y in range(0,img_h//2+1):
+            d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
+
+            if x < img_w//2-d or x > img_w//2+d: # Limit the sinusoidal shape
                 continue
 
+            if y >= img_h//2-1 :
+                out[y,x] = img[y,x]
+            else:
+                out[y, x] = cv2.getRectSubPix(img, (1, 1), (x-(img_w//2-d),y))
+
+
+    out = cv2.flip(out, -1)
+    img = cv2.flip(img, -1)
+    for x in range(0,img_w):
+        for y in range(0,img_h//2+1):
+            d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
+
+            if x < img_w//2-d or x > img_w//2+d: # Limit the sinusoidal shape
+                continue
+
+            if y >= img_h//2-1 :
+                out[y,x] = img[y,x]
+            else:
+                out[y, x] = cv2.getRectSubPix(img, (1, 1), (x-(img_w//2-d),y))
+
+    out = cv2.flip(out, -1)
+
+    equi = np.zeros_like(out)
+    for x in range(0, img_w):
+        for y in range(0, img_h):
             lat, lng = equirectangular2latlng(x, y, img_w, img_h)
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
-            if y < img_h//2 :
-                img[y, x+(img_w//2-int(d))-1] = r_img[y, x]
-            else:
-                img[y, (img_w//2-int(d))-x] = r_img[y, img_w-x-1]
-    return img
+            equi[y,x] = cv2.getRectSubPix(out, (1, 1), (xs,ys))
+    return equi

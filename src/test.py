@@ -170,16 +170,17 @@ cv2.destroyAllWindows()
 
 """
 ================================================================================
-Test Sinusoidal Rearrange (2,1)
+Test Sinusoidal Compression-Decompression (2,1)
 """
 
 
-I_s = sd.sinusoidal_downsampling(pano)
-I_r = sd.sinusoidal_rearrange_forward(I_s)
-cv2.imshow("Sinusoidal downsampling", I_s)
-cv2.imshow("Sinusoidal rearrange forward", I_r)
+I_c = sd.sinusoidal_compression(pano)
+I_rb = sd.sinusoidal_decompression(I_c)
+cv2.imshow("Sinusoidal compressioon", I_c)
+cv2.imshow("Sinusoidal rearrange backward", I_rb)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+cv2.imwrite("rearrangement_backward.png", I_rb)
 
 
 
