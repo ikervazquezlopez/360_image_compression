@@ -6,7 +6,6 @@ from tqdm import tqdm
 
 PI = math.pi
 
-RED = np.array([0,0,255])
 
 
 """
@@ -29,7 +28,7 @@ def sinusoidal2latlng(x, y, img_w, img_h, lng0=0):
     if y == 0:
         lng = 0
     else:
-        lng = xx / math.cos(lat) + lng0
+        lng = xx / np.cos(lat) + lng0
     return (lat, lng)
 
 
@@ -50,16 +49,10 @@ def equirectangular2latlng(x, y,  img_w, img_h, lat0=0, lng0=0):
     h = img_h
     xx = 2*math.pi*x/w - math.pi
     yy = math.pi*y/h - math.pi/2
-    lng = xx/math.cos(lat0) + lng0
+    lng = xx/np.cos(lat0) + lng0
     lat = yy + lat0
     return (lat, lng)
 
-
-def rearrange_cartesian2latlng(x, y, img_w, img_h):
-    row_length = img_w * math.cos( (PI/2) * ( 1-(y/(img_h/2)) ) )
-    lng = 2*PI * ( (x-img_w//2 + row_length/2) / row_length ) - PI
-    lat  = PI * y/(img_h//2) - PI/2
-    return (lat, lng)
 
 
 
@@ -78,7 +71,7 @@ Out:
 def latlng2sinusoidal(lat,lng, img_w, img_h, lng0=0):
     w = img_w
     h = img_h
-    xx = (lng-lng0)*math.cos(lat)
+    xx = (lng-lng0)*np.cos(lat)
     yy = lat
     x = w * (xx+math.pi) / (2*math.pi)
     y = h * (yy+math.pi/2) / math.pi
@@ -105,7 +98,7 @@ Out:
 def latlng2equirectangular(lat, lng, img_w, img_h, lat0=0, lng0=0):
     w = img_w
     h = img_h
-    xx = (lng-lng0)*math.cos(lat0)
+    xx = (lng-lng0)*np.cos(lat0)
     yy = lat-lat0
     x = w * (xx+math.pi) / (2*math.pi)
     y = h * (yy+math.pi/2) / math.pi
@@ -140,25 +133,6 @@ def sinusoidal_downsampling(equi_img):
             xs, ys = latlng2equirectangular(lat, lng, img_w, img_h)
             img[y, x] = cv2.getRectSubPix(equi_img, (1,1), (xs,ys))
     return img
-
-
-def sinusoidal_reconstruction(sin_img):
-    img = np.zeros_like(sin_img)
-    img_h, img_w, _ = img.shape
-    lng0 = 0
-
-    for x in range(0,img_w):
-        for y in range(0,img_h):
-            lat, lng = equirectangular2latlng(x, y, img_w, img_h)
-            xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
-            img[y, x] = cv2.getRectSubPix(sin_img, (1,1), (xs,ys))
-    return img
-
-
-
-
-
-
 
 
 
@@ -201,11 +175,23 @@ def sinusoidal_rearrange_forward(sin_img):
         for y in range(0,img_h):
             if y+v_shift+1 > 2*pix_count+2:
                 continue
-            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))#img[y,x]
+            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))
     return img_r[:2*pix_count+2,:,:]
 
 
 
+
+
+"""
+Projects the input equirectangular image to a sinusoidal projected image and
+rearranges the pixels to fill the empty spaces. This forms the image sinusoidal
+compressed version.
+
+In:
+    equi_img: the input equirectangular image
+Out:
+    img_r: the compressed sinusoidal image.
+"""
 def sinusoidal_compression(equi_img):
     img = np.zeros_like(equi_img)
     img_h, img_w, _ = img.shape
@@ -232,11 +218,22 @@ def sinusoidal_compression(equi_img):
     for x in range(0,img_w):
         v_shift = abs(img_h*math.acos(x/img_w)/PI - img_h//2)
         for y in range(0,img_h):
-            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))#img[y,x]
+            img_r[y,x] = cv2.getRectSubPix(img, (1,1), (x,y+v_shift+1))
 
     return img_r[:2*pix_count+2,:,:]
 
 
+
+
+"""
+Decompressed the image produced by 'sinusoidal_compression' function into an
+equirectangular image
+
+In:
+    img_r: the compressed sinusoidal image.
+Out:
+    equi: the decompressed equirectangular image.
+"""
 def sinusoidal_decompression(img_r):
     h, w, _ = img_r.shape
     img = np.zeros((w//2, w, 3), dtype=np.uint8)
@@ -247,7 +244,7 @@ def sinusoidal_decompression(img_r):
     for x in range(0,img_w):
         v_shift = img_h*math.acos(x/img_w)/PI - img_h//2
         for y in range(0,img_h):
-            img[y,x] = cv2.getRectSubPix(img_r, (1,1), (x,y+v_shift+1))#img[y,x]
+            img[y,x] = cv2.getRectSubPix(img_r, (1,1), (x,y+v_shift+1))
 
     # Horizontal rearrangement
     out = np.zeros_like(img)
