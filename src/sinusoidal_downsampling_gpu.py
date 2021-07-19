@@ -169,6 +169,7 @@ Out:
 def getSubPixel(x, y, img, w, h, color):
     img_w = w
     img_h = h
+
     x0 = math.floor(x)
     y0 = math.floor(y)
 
@@ -211,6 +212,7 @@ def getSubPixel(x, y, img, w, h, color):
     elif x0-1 < 0:
         interpolate(img[yp-1, x0], img[yp-1, x0+1], dx, top_color)
         interpolate(img[yp+1, x0], img[yp+1, x0+1], dx, bot_color)
+        #interpolate(img[yp+1, x0], img[yp+1, x0+1], dx, bot_color)
 
     # General case
     else:
@@ -235,7 +237,7 @@ In:
     d_dim: input image dimensions (width, height) (device pointer)
 """
 @cuda.jit
-def sinusoidal_compression_0(d_equi_img, d_img_r, d_tmp, d_dim):
+def sinusoidal_compression_0(d_equi_img, d_tmp, d_dim):
     img_w = d_dim[0]
     img_h = d_dim[1]
     img_w_half = img_w/2
@@ -273,13 +275,12 @@ Vertically shifts the pixels to generate the compressed version of the image.
 Must be preceeded by *sinusoidal_compression_0" kernel.
 
 In:
-    d_equi_img: the input equirectangular image (device pointer)
-    d_img_r: the output compressed image (device_pointer)
     d_tmp: the temporal image where the horizontal rearrangement is computed (device pointer)
+    d_img_r: the output compressed image (device_pointer)
     d_dim: input image dimensions (width, height) (device pointer)
 """
 @cuda.jit
-def sinusoidal_compression_1(d_equi_img, d_img_r, d_tmp, d_dim):
+def sinusoidal_compression_1(d_tmp, d_img_r, d_dim):
     img_w = d_dim[0]
     img_h = d_dim[1]
     img_w_half = img_w/2
@@ -372,3 +373,47 @@ def sinusoidal_decompression(img_r):
             xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
             equi[y,x] = cv2.getRectSubPix(out, (1, 1), (xs,ys))
     return equi
+
+
+
+
+"""
+Vertically shifts the pixels to generate the decompressed version of the compressed image.
+Right after, *sinusoidal_decompression_1* must be called to produce the decompressed version
+of the input image.
+
+In:
+    d_comp_img: the sinusoidal compressed image (device pointer)
+    d_out_v: the output vertically shifted image (device_pointer)
+    d_dim: input image dimensions (width, height) (device pointer)
+"""
+@cuda.jit
+def sinusoidal_decompression_0(d_comp_img, d_out_v, d_dim):
+    img_w = d_dim[0]
+    img_h = d_dim[1]
+
+    img_w_half = img_w/2
+    img_h_half = img_h/2
+    img_w_half_int = int(img_w_half)
+
+    tx = cuda.threadIdx.x
+    ty = cuda.blockIdx.x
+
+    f_img_h = float(img_h)
+
+    f_img_w = float(img_w)
+    f_img_h_half = float(img_h_half)
+    pix_count = int(img_h*math.acos(0.5)/math.pi)
+    while tx < img_w:
+        f_tx = float(tx)
+        v_shift = f_img_h*math.acos(f_tx/f_img_w)/math.pi - f_img_h_half
+
+        while ty < img_h:
+            typ = float(ty)+v_shift+1.0
+
+            if typ > 0 and typ < pix_count:#img_h-2*cuda.gridDim.x:
+                getSubPixel(tx, typ, d_comp_img, img_w, img_h, d_out_v[ty,tx])
+
+            ty = ty + cuda.gridDim.x
+        tx = tx + cuda.blockDim.x
+        ty = cuda.blockIdx.x
