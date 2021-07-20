@@ -360,6 +360,7 @@ h, w, _ = pano.shape
 dim = np.array([w,h], dtype=np.uint32)
 img_r = np.zeros_like(pano)
 tmp = np.zeros_like(pano)
+out_v = np.zeros_like(pano)
 dec = np.zeros_like(pano)
 
 out = np.zeros((h,w,4), dtype=np.int32)
@@ -372,22 +373,26 @@ d_dim = cuda.to_device(np.ascontiguousarray(dim), stream=stream)
 
 d_out_tmp = cuda.to_device(np.ascontiguousarray(out), stream=stream)
 
-sin_gpu.sinusoidal_compression_0[512, 512](d_pano, d_img_r, d_tmp, d_dim)
-sin_gpu.sinusoidal_compression_1[512, 512](d_pano, d_img_r, d_tmp, d_dim)
+sin_gpu.sinusoidal_compression_0[512, 512](d_pano, d_tmp, d_dim)
+sin_gpu.sinusoidal_compression_1[512, 512](d_tmp, d_img_r, d_dim)
 
 img_r = d_img_r.copy_to_host()
 pix_count = int(h*math.acos(0.5)/math.pi)
 img_r = img_r[:2*pix_count+2,:,:]
 d_img_r = cuda.to_device(np.ascontiguousarray(img_r), stream=stream)
+d_out_v = cuda.to_device(np.ascontiguousarray(out_v), stream=stream)
 d_dec = cuda.to_device(np.ascontiguousarray(dec), stream=stream)
 
-sin_gpu.sinusoidal_decompression_0[512,512](d_img_r, d_dec, d_dim)
+sin_gpu.sinusoidal_decompression_0[512,512](d_img_r, d_out_v, d_dim)
+sin_gpu.sinusoidal_decompression_1[512,512](d_out_v, d_dec, d_dim)
 
-tmp = d_tmp.copy_to_host()
+out_v = d_out_v.copy_to_host()
+dec = d_dec.copy_to_host()
+img_r = d_img_r.copy_to_host()
 
 
 t = time.time()-t0
-cv2.imwrite('out.png', tmp)
+cv2.imwrite('out.png', dec)
 print("{} seconds".format(t))
 
 

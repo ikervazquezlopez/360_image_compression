@@ -232,7 +232,6 @@ of the input image.
 
 In:
     d_equi_img: the input equirectangular image (device pointer)
-    d_img_r: the output compressed image (device_pointer)
     d_tmp: the temporal image where the horizontal rearrangement is computed (device pointer)
     d_dim: input image dimensions (width, height) (device pointer)
 """
@@ -314,66 +313,6 @@ def sinusoidal_compression_1(d_tmp, d_img_r, d_dim):
 
 
 
-"""
-Decompressed the image produced by 'sinusoidal_compression' function into an
-equirectangular image
-
-In:
-    img_r: the compressed sinusoidal image.
-Out:
-    equi: the decompressed equirectangular image.
-"""
-def sinusoidal_decompression(img_r):
-    h, w, _ = img_r.shape
-    img = np.zeros((w//2, w, 3), dtype=np.uint8)
-    img_h, img_w, _ = img.shape
-
-    # Vertical rearrangement
-    pix_count = int(img_h*math.acos(0.5)/PI)
-    for x in range(0,img_w):
-        v_shift = img_h*math.acos(x/img_w)/PI - img_h//2
-        for y in range(0,img_h):
-            img[y,x] = cv2.getRectSubPix(img_r, (1,1), (x,y+v_shift+1))
-
-    # Horizontal rearrangement
-    out = np.zeros_like(img)
-    for x in range(0,img_w):
-        for y in range(0,img_h//2+1):
-            d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
-
-            if x < img_w//2-d or x > img_w//2+d: # Limit the sinusoidal shape
-                continue
-
-            if y >= img_h//2-1 :
-                out[y,x] = img[y,x]
-            else:
-                out[y, x] = cv2.getRectSubPix(img, (1, 1), (x-(img_w//2-d),y))
-
-
-    out = cv2.flip(out, -1)
-    img = cv2.flip(img, -1)
-    for x in range(0,img_w):
-        for y in range(0,img_h//2+1):
-            d = abs((img_w/2) * math.cos(math.pi*(y/img_h - 0.5)))
-
-            if x < img_w//2-d or x > img_w//2+d: # Limit the sinusoidal shape
-                continue
-
-            if y >= img_h//2-1 :
-                out[y,x] = img[y,x]
-            else:
-                out[y, x] = cv2.getRectSubPix(img, (1, 1), (x-(img_w//2-d),y))
-
-    out = cv2.flip(out, -1)
-
-    equi = np.zeros_like(out)
-    for x in range(0, img_w):
-        for y in range(0, img_h):
-            lat, lng = equirectangular2latlng(x, y, img_w, img_h)
-            xs, ys = latlng2sinusoidal(lat, lng, img_w, img_h)
-            equi[y,x] = cv2.getRectSubPix(out, (1, 1), (xs,ys))
-    return equi
-
 
 
 
@@ -385,7 +324,7 @@ of the input image.
 In:
     d_comp_img: the sinusoidal compressed image (device pointer)
     d_out_v: the output vertically shifted image (device_pointer)
-    d_dim: input image dimensions (width, height) (device pointer)
+    d_dim: output image dimensions (width, height) (device pointer)
 """
 @cuda.jit
 def sinusoidal_decompression_0(d_comp_img, d_out_v, d_dim):
@@ -411,9 +350,55 @@ def sinusoidal_decompression_0(d_comp_img, d_out_v, d_dim):
         while ty < img_h:
             typ = float(ty)+v_shift+1.0
 
-            if typ > 0 and typ < pix_count:#img_h-2*cuda.gridDim.x:
+            if typ > 0 and typ < 2*pix_count:#img_h-2*cuda.gridDim.x:
                 getSubPixel(tx, typ, d_comp_img, img_w, img_h, d_out_v[ty,tx])
 
             ty = ty + cuda.gridDim.x
         tx = tx + cuda.blockDim.x
         ty = cuda.blockIdx.x
+
+
+
+"""
+Horizontally shifts the pixels to generate the decompressed sinusoidal version of the image.
+Must be preceeded by *sinusoidal_decompression_0" kernel.
+
+In:
+    d_out_v: the temporal image where the vertical rearrangement was computed
+             from kernel *sinusoidal_decompression_0* (device pointer)
+    d_decomp: the output decompressed sinusoidal image (device_pointer)
+    d_dim: input image dimensions (width, height) (device pointer)
+"""
+@cuda.jit
+def sinusoidal_decompression_1(d_out_v, d_decomp, d_dim):
+    img_w = d_dim[0]
+    img_h = d_dim[1]
+
+    img_w_half = img_w/2
+    img_h_half = img_h/2
+    img_w_half_int = int(img_w_half)
+
+    tx = cuda.threadIdx.x
+    ty = cuda.blockIdx.x
+
+    f_img_h = float(img_h)
+
+    f_img_w = float(img_w)
+    f_img_h_half = float(img_h_half)
+    f_img_w_half = float(img_w_half)
+
+    while ty < img_h:
+        f_ty = float(ty)
+        while tx < img_w:
+            d = abs(f_img_w_half * math.cos(math.pi*(f_ty/f_img_h - 0.5)))
+
+            if float(tx) < f_img_w_half - d  or float(tx) > f_img_w_half + d: # Limit the sinusoidal shape
+                tx = tx + cuda.blockDim.x
+                continue
+            if f_ty < f_img_h_half-1:
+                getSubPixel(tx-(f_img_w_half-d), ty, d_out_v, img_w, img_h, d_decomp[ty,tx])
+            else:
+                getSubPixel(tx+(f_img_w_half-d), ty, d_out_v, img_w, img_h, d_decomp[ty,tx])
+            tx = tx + cuda.blockDim.x
+        ty = ty + cuda.gridDim.x
+        tx = cuda.threadIdx.x
